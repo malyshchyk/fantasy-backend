@@ -1,9 +1,10 @@
 package routes
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/akim-malyshchyk/fantasy-backend/internal/handlers"
+	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -12,11 +13,11 @@ func NewRouter() http.Handler {
 	r.Use(responseContentTypeMiddleware)
 
 	api := r.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/", indexHandler)
+	api.HandleFunc("/tournaments/{tournament_id:[0-9]+}/teams", handlers.GetTeams).Methods("GET")
 
-	return r
-}
+	corsOrigins := gorillaHandlers.AllowedOrigins([]string{"*"})
+	corsMethods := gorillaHandlers.AllowedMethods([]string{"GET"})
+	corsHeaders := gorillaHandlers.AllowedHeaders([]string{"Content-Type"})
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello World!")
+	return gorillaHandlers.CORS(corsOrigins, corsMethods, corsHeaders)(r)
 }
