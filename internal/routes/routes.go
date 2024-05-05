@@ -11,7 +11,8 @@ func NewRouter() http.Handler {
 	r := mux.NewRouter()
 	r.Use(responseContentTypeMiddleware)
 
-	r.HandleFunc("/", indexHandler)
+	api := r.PathPrefix("/api/v1").Subrouter()
+	api.HandleFunc("/", indexHandler)
 
 	return r
 }
