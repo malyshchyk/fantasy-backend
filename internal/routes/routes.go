@@ -14,6 +14,7 @@ func NewRouter() http.Handler {
 
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/tournaments/{tournament_id:[0-9]+}/teams", handlers.GetTeams).Methods("GET")
+	api.HandleFunc("/tournaments", handlers.GetTournaments).Methods("GET")
 
 	corsOrigins := gorillaHandlers.AllowedOrigins([]string{"*"})
 	corsMethods := gorillaHandlers.AllowedMethods([]string{"GET"})
