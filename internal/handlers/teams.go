@@ -14,13 +14,15 @@ func GetTeams(w http.ResponseWriter, r *http.Request) {
 	tournamentID := vars["tournament_id"]
 
 	params := url.Values{}
-	body := Get("https://api.rating.chgk.net/tournaments/"+tournamentID+"/results", params, w)
-	if body == nil {
+	body, err := Get("https://api.rating.chgk.net/tournaments/"+tournamentID+"/results", params)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var results []TeamData
-	err := json.Unmarshal(body, &results)
+	err = json.Unmarshal(body, &results)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

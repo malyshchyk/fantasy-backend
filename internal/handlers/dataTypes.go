@@ -5,11 +5,12 @@ type Tournament struct {
 	Name      string `json:"name"`
 	DateStart string `json:"dateStart"`
 	DateEnd   string `json:"dateEnd"`
+	TownName  string `json:"town"`
 }
 
-type TournamentData struct {
-	ID     int `json:"id"`
-	Idtown int `json:"idtown"`
+type TournamentTownData struct {
+	TournamentId int `json:"id"`
+	TownId       int `json:"idtown"`
 }
 
 type Team struct {
