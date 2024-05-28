@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/akim-malyshchyk/fantasy-backend/internal/handlers"
@@ -8,13 +9,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewRouter() http.Handler {
+func NewRouter(db *sql.DB) http.Handler {
 	r := mux.NewRouter()
 	r.Use(responseContentTypeMiddleware)
 
+	hc := &handlers.HandlerContext{DB: db}
+
 	api := r.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/tournaments/{tournament_id:[0-9]+}/teams", handlers.GetTeams).Methods("GET")
-	api.HandleFunc("/tournaments", handlers.GetTournaments).Methods("GET")
+	api.HandleFunc("/tournaments/{tournament_id:[0-9]+}/teams", hc.GetTeams).Methods("GET")
+	api.HandleFunc("/tournaments", hc.GetTournaments).Methods("GET")
 
 	corsOrigins := gorillaHandlers.AllowedOrigins([]string{"*"})
 	corsMethods := gorillaHandlers.AllowedMethods([]string{"GET"})

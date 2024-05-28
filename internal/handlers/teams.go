@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func GetTeams(w http.ResponseWriter, r *http.Request) {
+func (hc *HandlerContext) GetTeams(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tournamentID := vars["tournament_id"]
 

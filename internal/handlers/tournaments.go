@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-func GetTournaments(w http.ResponseWriter, r *http.Request) {
+func (hc *HandlerContext) GetTournaments(w http.ResponseWriter, r *http.Request) {
 	timeFormat := "2006-01-02T15:04:05-07:00"
 	baseURL := "https://api.rating.chgk.net"
 
@@ -22,7 +23,7 @@ func GetTournaments(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	townsIds, err := getTownsIds(baseURL, countryIds)
+	townsIds, err := getTownsIds(hc.DB, countryIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -72,29 +73,32 @@ func fetchTournamentsData(baseURL string, timeFormat string, countryIds []string
 	return tournamentsMap, nil
 }
 
-func getTownsIds(baseURL string, countryIds []string) (map[int]Town, error) {
-	params := url.Values{}
-	for _, countryId := range countryIds {
-		params.Add("country[]", countryId)
-	}
-	params.Add("itemsPerPage", "500")
-
-	body, err := Get(baseURL+"/towns", params)
+func getTownsIds(db *sql.DB, countryIds []string) (map[int]Town, error) {
+	countryIdsArray := "{" + strings.Join(countryIds, ",") + "}"
+	stmt, err := db.Prepare("SELECT id, name FROM town WHERE country_id = ANY($1::int[])")
 	if err != nil {
 		return nil, err
 	}
-	var towns []Town
-	err = json.Unmarshal(body, &towns)
+	rows, err := stmt.Query(countryIdsArray)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+	towns := make(map[int]Town)
 
-	townsMap := make(map[int]Town, len(towns))
-	for _, town := range towns {
-		townsMap[town.ID] = town
+	for rows.Next() {
+		var town Town
+		err = rows.Scan(&town.ID, &town.Name)
+		if err != nil {
+			return nil, err
+		}
+		towns[town.ID] = town
 	}
 
-	return townsMap, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return towns, nil
 }
 
 func appendTowns(tournamentsMap map[int]Tournament, townsMap map[int]Town, baseURL string) ([]Tournament, error) {

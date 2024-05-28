@@ -1,5 +1,11 @@
 package handlers
 
+import "database/sql"
+
+type HandlerContext struct {
+	DB *sql.DB
+}
+
 type Tournament struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
