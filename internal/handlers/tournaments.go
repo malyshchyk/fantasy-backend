@@ -12,22 +12,22 @@ import (
 )
 
 func GetTournaments(w http.ResponseWriter, r *http.Request) {
-	queryParams := r.URL.Query()
 	timeFormat := "2006-01-02T15:04:05-07:00"
 	baseURL := "https://api.rating.chgk.net"
-	countryId := queryParams.Get("countryId")
 
-	tournamentsMap, err := fetchTournamentsData(baseURL, timeFormat)
+	countryIds := r.URL.Query()["countryId"]
+
+	tournamentsMap, err := fetchTournamentsData(baseURL, timeFormat, countryIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	townsIds, err := getTownsIds(baseURL, countryId)
+	townsIds, err := getTownsIds(baseURL, countryIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tournaments, err := filterByCountry(tournamentsMap, townsIds, baseURL)
+	tournaments, err := appendTowns(tournamentsMap, townsIds, baseURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -39,7 +39,7 @@ func GetTournaments(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tournaments)
 }
 
-func fetchTournamentsData(baseURL string, timeFormat string) (map[int]Tournament, error) {
+func fetchTournamentsData(baseURL string, timeFormat string, countryIds []string) (map[int]Tournament, error) {
 	t := time.Now().UTC()
 	t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 	currentDate := t.AddDate(0, 0, 1).Format(timeFormat)
@@ -50,6 +50,9 @@ func fetchTournamentsData(baseURL string, timeFormat string) (map[int]Tournament
 	params.Add("itemsPerPage", "100")
 	params.Add("dateEnd[after]", currentDate)
 	params.Add("dateEnd[before]", upperBound)
+	for _, countryId := range countryIds {
+		params.Add("town.country[]", countryId)
+	}
 
 	body, err := Get(baseURL+"/tournaments", params)
 	if err != nil {
@@ -69,9 +72,11 @@ func fetchTournamentsData(baseURL string, timeFormat string) (map[int]Tournament
 	return tournamentsMap, nil
 }
 
-func getTownsIds(baseURL string, countryId string) (map[int]Town, error) {
+func getTownsIds(baseURL string, countryIds []string) (map[int]Town, error) {
 	params := url.Values{}
-	params.Add("country", countryId)
+	for _, countryId := range countryIds {
+		params.Add("country[]", countryId)
+	}
 	params.Add("itemsPerPage", "500")
 
 	body, err := Get(baseURL+"/towns", params)
@@ -92,12 +97,12 @@ func getTownsIds(baseURL string, countryId string) (map[int]Town, error) {
 	return townsMap, nil
 }
 
-func filterByCountry(tournaments map[int]Tournament, townsMap map[int]Town, baseURL string) ([]Tournament, error) {
-	result := make([]Tournament, 0, len(tournaments))
+func appendTowns(tournamentsMap map[int]Tournament, townsMap map[int]Town, baseURL string) ([]Tournament, error) {
+	tournaments := make([]Tournament, 0, len(tournamentsMap))
 	ch := make(chan []byte)
 	cherr := make(chan error)
 	var wg sync.WaitGroup
-	for _, tournament := range tournaments {
+	for _, tournament := range tournamentsMap {
 		wg.Add(1)
 		go GetAsync(baseURL+"/tournaments/"+fmt.Sprint(tournament.ID), url.Values{}, ch, cherr, &wg)
 	}
@@ -117,13 +122,13 @@ func filterByCountry(tournaments map[int]Tournament, townsMap map[int]Town, base
 			return nil, err
 		}
 		if town, ok := townsMap[ttData.TownId]; ok {
-			tournament := tournaments[ttData.TournamentId]
+			tournament := tournamentsMap[ttData.TournamentId]
 			tournament.TownName = town.Name
-			tournaments[ttData.TournamentId] = tournament
-			result = append(result, tournaments[ttData.TournamentId])
+			tournamentsMap[ttData.TournamentId] = tournament
+			tournaments = append(tournaments, tournamentsMap[ttData.TournamentId])
 		}
 	}
-	return result, nil
+	return tournaments, nil
 }
 
 func orderByDateStart(tournaments []Tournament, timeFormat string) {
