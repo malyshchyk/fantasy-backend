@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,21 +13,19 @@ import (
 
 func (hc *HandlerContext) GetTournaments(w http.ResponseWriter, r *http.Request) {
 	timeFormat := "2006-01-02T15:04:05-07:00"
-	baseURL := "https://api.rating.chgk.net"
-
 	countryIds := r.URL.Query()["countryId"]
 
-	tournamentsMap, err := fetchTournamentsData(baseURL, timeFormat, countryIds)
+	tournamentsMap, err := hc.fetchTournamentsData(timeFormat, countryIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	townsIds, err := getTownsIds(hc.DB, countryIds)
+	townsIds, err := hc.getTownsIds(countryIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tournaments, err := appendTowns(tournamentsMap, townsIds, baseURL)
+	tournaments, err := hc.appendTowns(tournamentsMap, townsIds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -40,7 +37,7 @@ func (hc *HandlerContext) GetTournaments(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(tournaments)
 }
 
-func fetchTournamentsData(baseURL string, timeFormat string, countryIds []string) (map[int]Tournament, error) {
+func (hc *HandlerContext) fetchTournamentsData(timeFormat string, countryIds []string) (map[int]Tournament, error) {
 	t := time.Now().UTC()
 	t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 	currentDate := t.AddDate(0, 0, 1).Format(timeFormat)
@@ -55,7 +52,7 @@ func fetchTournamentsData(baseURL string, timeFormat string, countryIds []string
 		params.Add("town.country[]", countryId)
 	}
 
-	body, err := Get(baseURL+"/tournaments", params)
+	body, err := Get(hc.BaseUrl+"/tournaments", params)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +70,9 @@ func fetchTournamentsData(baseURL string, timeFormat string, countryIds []string
 	return tournamentsMap, nil
 }
 
-func getTownsIds(db *sql.DB, countryIds []string) (map[int]Town, error) {
+func (hc *HandlerContext) getTownsIds(countryIds []string) (map[int]Town, error) {
 	countryIdsArray := "{" + strings.Join(countryIds, ",") + "}"
-	stmt, err := db.Prepare("SELECT id, name FROM town WHERE country_id = ANY($1::int[])")
+	stmt, err := hc.DB.Prepare("SELECT id, name FROM town WHERE country_id = ANY($1::int[])")
 	if err != nil {
 		return nil, err
 	}
@@ -101,14 +98,14 @@ func getTownsIds(db *sql.DB, countryIds []string) (map[int]Town, error) {
 	return towns, nil
 }
 
-func appendTowns(tournamentsMap map[int]Tournament, townsMap map[int]Town, baseURL string) ([]Tournament, error) {
+func (hc *HandlerContext) appendTowns(tournamentsMap map[int]Tournament, townsMap map[int]Town) ([]Tournament, error) {
 	tournaments := make([]Tournament, 0, len(tournamentsMap))
 	ch := make(chan []byte)
 	cherr := make(chan error)
 	var wg sync.WaitGroup
 	for _, tournament := range tournamentsMap {
 		wg.Add(1)
-		go GetAsync(baseURL+"/tournaments/"+fmt.Sprint(tournament.ID), url.Values{}, ch, cherr, &wg)
+		go GetAsync(hc.BaseUrl+"/tournaments/"+fmt.Sprint(tournament.ID), url.Values{}, ch, cherr, &wg)
 	}
 	go func() {
 		wg.Wait()

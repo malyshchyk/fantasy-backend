@@ -3,7 +3,8 @@ package handlers
 import "database/sql"
 
 type HandlerContext struct {
-	DB *sql.DB
+	DB      *sql.DB
+	BaseUrl string
 }
 
 type Tournament struct {
@@ -12,6 +13,15 @@ type Tournament struct {
 	DateStart string `json:"dateStart"`
 	DateEnd   string `json:"dateEnd"`
 	TownName  string `json:"town"`
+}
+
+type TournamentInfo struct {
+	ID                 int            `json:"id"`
+	Name               string         `json:"name"`
+	DateStart          string         `json:"dateStart"`
+	DateEnd            string         `json:"dateEnd"`
+	DifficultyForecast float32        `json:"difficultyForecast"`
+	QuestionQty        map[string]int `json:"questionQty"`
 }
 
 type TournamentTownData struct {

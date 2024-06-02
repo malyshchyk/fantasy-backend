@@ -14,7 +14,7 @@ func (hc *HandlerContext) GetTeams(w http.ResponseWriter, r *http.Request) {
 	tournamentID := vars["tournament_id"]
 
 	params := url.Values{}
-	body, err := Get("https://api.rating.chgk.net/tournaments/"+tournamentID+"/results", params)
+	body, err := Get(hc.BaseUrl+"/tournaments/"+tournamentID+"/results", params)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -31,10 +31,11 @@ func (hc *HandlerContext) GetTeams(w http.ResponseWriter, r *http.Request) {
 	teams := make([]map[string]interface{}, len(results))
 	for i, result := range results {
 		teams[i] = map[string]interface{}{
+			"id":             result.Team.ID,
+			"name":           result.Current.Name,
 			"questionsTotal": result.QuestionsTotal,
 			"position":       result.Position,
 			"picked":         false,
-			"name":           result.Current.Name,
 			"cost":           1 + rand.Intn(100),
 		}
 	}

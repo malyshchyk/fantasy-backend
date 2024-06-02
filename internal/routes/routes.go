@@ -13,9 +13,10 @@ func NewRouter(db *sql.DB) http.Handler {
 	r := mux.NewRouter()
 	r.Use(responseContentTypeMiddleware)
 
-	hc := &handlers.HandlerContext{DB: db}
+	hc := &handlers.HandlerContext{DB: db, BaseUrl: "https://api.rating.chgk.net"}
 
 	api := r.PathPrefix("/api/v1").Subrouter()
+	api.HandleFunc("/tournaments/{tournament_id:[0-9]+}", hc.GetTournamentInfo).Methods("GET")
 	api.HandleFunc("/tournaments/{tournament_id:[0-9]+}/teams", hc.GetTeams).Methods("GET")
 	api.HandleFunc("/tournaments", hc.GetTournaments).Methods("GET")
 
