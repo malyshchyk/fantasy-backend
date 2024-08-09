@@ -1,17 +1,11 @@
-FROM golang:1.22-alpine
- 
+FROM golang:1.22
+
 WORKDIR /app
 
-ENV GOPATH /go
-ENV PATH $GOPATH/bin:$PATH
-
-RUN go install github.com/cosmtrek/air@latest
- 
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
 
-EXPOSE 8080
+RUN go build -o fantasy-backend cmd/fantasy-backend/main.go
 
-CMD ["air", "-c", ".air.toml"]
+ENTRYPOINT ["./fantasy-backend"]
