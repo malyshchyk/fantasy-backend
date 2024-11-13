@@ -39,7 +39,7 @@ func main() {
 	defer db.Close()
 
 	router := routes.NewRouter(db)
-	port := 8080
+	port := 3000
 	addr := fmt.Sprintf(":%d", port)
 
 	fmt.Printf("Started at http://localhost%s\n", addr)
