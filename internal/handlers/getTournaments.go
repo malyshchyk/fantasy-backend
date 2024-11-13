@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,8 +15,14 @@ import (
 func (hc *HandlerContext) GetTournaments(w http.ResponseWriter, r *http.Request) {
 	timeFormat := "2006-01-02T15:04:05-07:00"
 	countryIds := r.URL.Query()["countryId"]
+	upperBoundMonthsStr := r.URL.Query().Get("upperBoundMonths")
+	upperBoundMonths, err := strconv.Atoi(upperBoundMonthsStr)
+	if err != nil {
+		http.Error(w, "Invalid upperBoundMonths parameter", http.StatusBadRequest)
+		return
+	}
 
-	tournamentsMap, err := hc.fetchTournamentsData(timeFormat, countryIds)
+	tournamentsMap, err := hc.fetchTournamentsData(timeFormat, countryIds, upperBoundMonths)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -37,11 +44,11 @@ func (hc *HandlerContext) GetTournaments(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(tournaments)
 }
 
-func (hc *HandlerContext) fetchTournamentsData(timeFormat string, countryIds []string) (map[int]Tournament, error) {
+func (hc *HandlerContext) fetchTournamentsData(timeFormat string, countryIds []string, upperBoundMonths int) (map[int]Tournament, error) {
 	t := time.Now().UTC()
 	t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 	currentDate := t.AddDate(0, 0, 1).Format(timeFormat)
-	upperBound := t.AddDate(0, 3, 0).Format(timeFormat)
+	upperBound := t.AddDate(0, upperBoundMonths, 0).Format(timeFormat)
 
 	params := url.Values{}
 	params.Add("type", "2")
